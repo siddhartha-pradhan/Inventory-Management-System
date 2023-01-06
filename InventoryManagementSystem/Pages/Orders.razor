@@ -1,0 +1,331 @@
+﻿@page "/orders"
+
+<div class="row mt-3 mb-3">
+	<div class="col-6">
+		<h3>Orders Index</h3>
+	</div>
+</div>
+
+<ul class="nav nav-tabs">
+    <li class="nav-item ">
+        <a class='nav-link btn @(_tabFilter == "All" ? "active" : "")' @onclick='()=>TabFilter("All")'>All</a>
+    </li>
+    <li class="nav-item">
+        <a class='nav-link btn @(_tabFilter == "Pending" ? "active" : "")' @onclick='()=>TabFilter("Pending")'>Pending</a>
+    </li>
+    <li class="nav-item">
+        <a class='nav-link btn @(_tabFilter == "Approved" ? "active" : "")' @onclick='()=>TabFilter("Approved")'>Approved</a>
+    </li>
+    <li class="nav-item">
+        <a class='nav-link btn @(_tabFilter == "Rejected" ? "active" : "")' @onclick='()=>TabFilter("Rejected")'>Rejected</a>
+    </li>
+</ul>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>
+                <div class="d-flex">
+                    <input type="search" class="form-control search" placeholder="Search an ordered product"/>
+                    <a class='btn text-@(_sortBy == "product" ? "primary" : "secondary")' data-mdb-toggle="tooltip"
+                       @onclick='()=>SortByHandler("product")'>
+                        <span class='oi oi-sort-@(_sortBy == "product" ? _sortDirection : "ascending")' />
+                    </a>
+                </div>
+            </th>
+            <th>
+                <div class="d-flex">
+                    Quantity
+                    <a class='btn text-@(_sortBy == "quantity" ? "primary" : "secondary")' data-mdb-toggle="tooltip"
+                       @onclick='()=>SortByHandler("quantity")'>
+                        <span class='oi oi-sort-@(_sortBy == "quantity" ? _sortDirection : "ascending")' />
+                    </a>
+                </div>
+            </th>
+            <th>
+                <div class="d-flex">
+                    Order Status
+                    <a class='btn text-@(_sortBy == "orderStatus" ? "primary" : "secondary")' data-mdb-toggle="tooltip"
+                       @onclick='()=>SortByHandler("orderStatus")'>
+                        <span class='oi oi-sort-@(_sortBy == "orderStatus" ? _sortDirection : "ascending")' />
+                    </a>
+                </div>
+            </th>
+            <th>
+                <div class="d-flex">
+                    Ordered By
+                    <a class='btn text-@(_sortBy == "orderedBy" ? "primary" : "secondary")' data-mdb-toggle="tooltip"
+                       @onclick='()=>SortByHandler("orderedBy")'>
+                        <span class='oi oi-sort-@(_sortBy == "orderedBy" ? _sortDirection : "ascending")' />
+                    </a>
+                </div>
+            </th>
+            <th>
+                <div class="d-flex">
+                    Ordered At
+                    <a class='btn text-@(_sortBy == "orderedAt" ? "primary" : "secondary")' data-mdb-toggle="tooltip"
+                       @onclick='()=>SortByHandler("orderedAt")'>
+                        <span class='oi oi-sort-@(_sortBy == "orderedAt" ? _sortDirection : "ascending")' />
+                    </a>
+                </div>
+            </th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+    @{
+        IEnumerable<Order> orders = _orders;
+
+        if (_globalState.CurrentUser?.Role == Role.Staff)
+        {
+            orders = orders.Where(x => x.OrderedBy == _globalState.CurrentUser.Id);
+        }
+
+        if (_sortBy == "product")
+        {
+            orders = _sortDirection == "ascending" ? orders.OrderBy(p => p.ProductId) : orders.OrderByDescending(p => p.ProductId);
+        }
+        else if (_sortBy == "quantity")
+        {
+            orders = _sortDirection == "ascending" ? orders.OrderBy(p => p.Quantity) : orders.OrderByDescending(p => p.Quantity);
+        }
+        else if (_sortBy == "orderStatus")
+        {
+            orders = _sortDirection == "ascending" ? orders.OrderBy(p => p.OrderStatus) : orders.OrderByDescending(p => p.OrderStatus);
+        }
+        else if (_sortBy == "orderedBy")
+        {
+            orders = _sortDirection == "ascending" ? orders.OrderBy(p => p.OrderedBy) : orders.OrderByDescending(p => p.OrderedBy);
+        }
+        else if (_sortBy == "orderedAt")
+        {
+            orders = _sortDirection == "ascending" ? orders.OrderBy(p => p.OrderedAt) : orders.OrderByDescending(p => p.OrderedAt);
+        }
+
+        if (_tabFilter == "Pending")
+        {
+            orders = orders.Where(x => x.OrderStatus == Status.Pending);
+        }
+
+        else if (_tabFilter == "Approved")
+        {
+            orders = orders.Where(x => x.OrderStatus == Status.Approved);
+        }
+
+        else if (_tabFilter == "Rejected")
+        {
+            orders = orders.Where(x => x.OrderStatus == Status.Rejected);
+        }
+
+        foreach (var order in orders)
+        {
+            <tr>
+                <td>
+                @{
+                    var product = ProductService.GetById(order.ProductId);
+                    <span>@(product.Title)</span>
+                }
+                </td>
+                <td>@order.Quantity</td>
+                <td>@order.OrderStatus</td>
+                <td>
+                @{
+                    var user = UserService.GetById(order.OrderedBy);
+                    <span>@(user == null ? "Staff not found." : user.Username)</span>
+                }
+                </td>
+                <td>@order.OrderedAt</td>
+                <td>
+                @{
+                    if(order.OrderStatus == Status.Pending)
+                    {
+                        if (_globalState.CurrentUser?.Role == Role.Admin)
+                        {
+                            <button class="btn btn-outline-secondary" type="button" @onclick="()=>OpenApproveOrderDialog(order)">
+                                <i class="fa-regular fa-circle-check"></i> &nbsp; Approve
+                            </button>
+                            <button class="btn btn-outline-danger" type="button" @onclick="()=>OpenRejectOrderDialog(order)">
+                                <i class="fa-solid fa-ban"></i> &nbsp; Reject
+                            </button>
+                        }
+                        else
+                        {
+                            <button disabled="@true" class="btn btn-outline-info" type="button">
+                                <i class="fa-solid fa-download"></i> &nbsp; Order Processing
+                            </button>        
+                        }
+                    }
+                    else
+                    {
+                        <button disabled="@true" class="btn btn-outline-primary" type="button">
+                            <i class="fa-solid fa-share"></i> &nbsp; Order Completed
+                        </button>            
+                    }
+                }
+                    
+                </td>
+            </tr>
+        }
+    }
+    </tbody>
+</table>
+
+@if (_showApproveOrderDialog)
+{
+	<ModalDialog Title="@_dialogTitle" OnClose="@OnApproveOrderDialogClose" OkLabel="@_dialogOkLabel">
+        @{
+            var product = ProductService.GetById(_orderModel.ProductId);
+            var user = UserService.GetById(_orderModel.OrderedBy);
+        }
+		<p>Are you sure you want to approve 
+            <strong><span>@user.Username</span>'s order for <span>@_orderModel.Quantity</span> amount of <span>@product.Title</span></strong> 
+        </p>
+	    @if (!string.IsNullOrEmpty(_approveOrderErrorMessage))
+	    {
+			<ErrorMessage Type="danger" Message="@_approveOrderErrorMessage" />
+	    }
+	</ModalDialog>
+}
+
+@if (_showRejectOrderDialog)
+{
+    <ModalDialog Title="@_dialogTitle" OnClose="@OnRejectOrderDialogClose" OkLabel="@_dialogOkLabel">
+        @{
+            var product = ProductService.GetById(_orderModel.ProductId);
+            var user = UserService.GetById(_orderModel.OrderedBy);
+        }
+            <p>Are you sure you want to reject 
+                <strong><span>@user.Username</span>'s order for <span>@_orderModel.Quantity</span> amount of <span>@product.Title</span></strong> 
+            </p>
+        @if (!string.IsNullOrEmpty(_rejectOrderErrorMessage))
+        {
+            <ErrorMessage Type="danger" Message="@_rejectOrderErrorMessage" />
+        }
+    </ModalDialog>
+}
+
+@code {
+    [CascadingParameter]
+    private GlobalState _globalState { get; set; }
+
+    private List<Order> _orders { get; set; }
+
+    private Order _orderModel { get; set; }
+
+    private bool _showApproveOrderDialog { get; set; }
+
+    private bool _showRejectOrderDialog { get; set; }
+
+    private string _dialogTitle { get; set; }
+
+    private string _dialogOkLabel { get; set; }
+
+    private string _approveOrderErrorMessage { get; set; }
+
+    private string _rejectOrderErrorMessage { get; set; }
+
+    private string _tabFilter = "All";
+
+    private string _sortBy = "product";
+
+    private string _sortDirection = "ascending";
+
+    private string _ordersPath = UtilityService.GetAppOrdersFilePath();
+
+    protected override void OnInitialized()
+    {
+        _orders = OrderService.GetAll(_ordersPath);
+    }
+
+    private void OpenApproveOrderDialog(Order order)
+    {
+        _dialogTitle = "Approve an order";
+
+        _dialogOkLabel = "Confirm";
+
+        _approveOrderErrorMessage = "";
+
+        _orderModel = order;
+
+        _showApproveOrderDialog = true;
+    }
+
+    private void OpenRejectOrderDialog(Order order)
+    {
+        _dialogTitle = "Reject a requested order";
+
+        _dialogOkLabel = "Confirm";
+
+        _rejectOrderErrorMessage = "";
+
+        _orderModel = order;
+
+        _showRejectOrderDialog = true;
+    }
+
+    private void SortByHandler(string sortByIndex)
+    {
+        if (_sortBy == sortByIndex)
+        {
+            _sortDirection = _sortDirection == "ascending" ? "descending" : "ascending";
+        }
+        else
+        {
+            _sortBy = sortByIndex;
+
+            _sortDirection = "ascending";
+        }
+    }
+
+    public void TabFilter(string status)
+    {
+        _tabFilter = status;
+    }
+
+    private void OnApproveOrderDialogClose(bool isClosed)
+    {
+        if (isClosed)
+        {
+            _showApproveOrderDialog = false;
+        }
+        else
+        {
+            try
+            {
+                _orders = OrderService.Update(_orderModel.Id, _globalState.CurrentUser.Id, Status.Approved);
+
+                _showApproveOrderDialog = false;
+            }
+            catch (Exception e)
+            {
+                _approveOrderErrorMessage = e.Message;
+
+                Console.WriteLine(e.Message);
+            }
+        }
+
+    }
+
+    private void OnRejectOrderDialogClose(bool isClosed)
+    {
+        if (isClosed)
+        {
+            _showRejectOrderDialog = false;
+        }
+        else
+        {
+            try
+            {
+                _orders = OrderService.Update(_orderModel.Id, _globalState.CurrentUser.Id, Status.Rejected);
+
+                _showRejectOrderDialog = false;
+            }
+            catch (Exception e)
+            {
+                _rejectOrderErrorMessage = e.Message;
+
+                Console.WriteLine(e.Message);
+            }
+        }
+    }
+}

@@ -1,0 +1,82 @@
+﻿@page "/login"
+
+@inject NavigationManager NavManager
+
+<div class="vh-100 d-flex justify-content-center align-items-center">
+	<div class="container">
+		<div class="row d-flex justify-content-center">
+			<div class="col-12 col-md-8 col-lg-6">
+				<div class="border border-3 border-secondary rounded-2">
+					<div class="card bg-white shadow-lg">
+						<div class="card-body p-5">
+							<form class="mb-1 mt-md-4" @onsubmit="LoginHandler">
+								<h2 class="fw-bold mb-2">Login</h2>
+								<p class=" mb-4">Please sign in by your username and password.</p>
+								<div class="mb-3">
+									<label for="text" class="form-label">Username</label>
+									<input type="text" class="form-control" @bind="_username" placeholder="Enter your username">
+								</div>
+								<div class="mb-3">
+									<label for="password" class="form-label">Password</label>
+									<input type="password" class="form-control" @bind="_password" placeholder="*******">
+								</div>
+								@if (!string.IsNullOrEmpty(_errorMessage))
+								{
+									<ErrorMessage Type="danger" Message="@_errorMessage" />
+								}
+								<div class="mt-4 d-grid">
+									<button class="btn btn-outline-dark" type="submit">Login</button>
+								</div>
+							</form>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+@code {
+	[CascadingParameter]
+	private GlobalState _globalState { get; set; }
+
+	private string _username { get; set; }
+
+	private string _password { get; set; }
+
+	private string _errorMessage = "";
+
+	protected override void OnInitialized()
+	{
+		_globalState.CurrentUser = null;
+
+		try
+		{
+			var user = UserService.Login(UserService.SeedUsername, UserService.SeedPassword);
+		}
+		catch(Exception e)
+		{
+			_errorMessage = e.Message;
+			Console.WriteLine(e.Message);
+		}
+	}
+
+	private void LoginHandler()
+	{
+		try
+		{
+			var user = _globalState.CurrentUser = UserService.Login(_username, _password);
+
+			if (user != null)
+			{
+				NavManager.NavigateTo("/home");
+			}
+		}
+
+		catch (Exception e)
+		{
+			_errorMessage = e.Message;
+			Console.WriteLine(e);
+		}
+	}
+}

@@ -1,0 +1,67 @@
+﻿@page "/home"
+
+<Chart Config="_config"></Chart>
+
+@code {
+	private BarConfig _config;
+
+	private List<OrderQuantity> _sales { get; set; }
+
+	protected override void OnInitialized()
+	{
+		_sales = OrderService.GetOrderedQuantity();
+
+		//var products = ProductService.GetAll(_productsPath).Select(x => new { x.Id, x.Title });
+
+		//var result = (from sale in sales
+		//					join product in products
+		//					on sale.ProductId equals product.Id
+		//					select new
+		//					{
+		//						Product = product.Title,
+		//						Quantity = sale.Quantity
+		//					}).ToList();
+
+		_config = new BarConfig
+        {
+            Options = new BarOptions
+            {
+                Responsive = true,
+                Title = new OptionsTitle
+                {
+                    Display = true,
+                    Text = "Item Sales Chart"
+                },
+                Scales = new BarScales
+                {
+                    YAxes = new List<CartesianAxis>
+                    {
+                        new LinearCartesianAxis
+                        {
+                            Ticks = new LinearCartesianTicks
+                            {
+                                BeginAtZero = true
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        var dataset = new BarDataset<int>()
+        {
+            Label = "Item Sales",
+            BackgroundColor = ColorUtil.ColorHexString(255, 99, 132),
+            BarThickness = 50
+        };
+
+		foreach (var item in _sales)
+		{
+			_config.Data.Labels.Add(ProductService.GetById(item.ProductId).Title);
+			dataset.Add(item.Quantity);
+		}
+
+		_config.Data.Datasets.Add(dataset);
+
+	}
+}

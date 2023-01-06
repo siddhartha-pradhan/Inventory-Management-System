@@ -1,0 +1,171 @@
+﻿@page "/stats"
+
+<div class="row mt-3 mb-3">
+	<div class="col-6">
+		<h3>Statistics Index</h3>
+	</div>
+</div>
+
+<ul class="nav nav-tabs">
+	<li class="nav-item ">
+		<a class='nav-link btn @(_tabFilter == "All" ? "active" : "")' @onclick='()=>TabFilter("All")'>All</a>
+	</li>
+	<li class="nav-item">
+		<a class='nav-link btn @(_tabFilter == "Approved" ? "active" : "")' @onclick='()=>TabFilter("Approved")'>Approved</a>
+	</li>
+	<li class="nav-item">
+		<a class='nav-link btn @(_tabFilter == "Rejected" ? "active" : "")' @onclick='()=>TabFilter("Rejected")'>Rejected</a>
+	</li>
+	<li class="nav-item">
+		<a class='nav-link btn @(_tabFilter == "Sales" ? "active" : "")' @onclick='()=>TabFilter("Sales")'>Sales</a>
+	</li>
+</ul>
+
+@{
+	if(_tabFilter == "Sales")
+	{
+		<table class="table">
+			<thead>
+				<tr>
+					<th>
+						<div class="d-flex">Product Name</div>
+					</th>
+					<th>
+						<div class="d-flex">Total Quantity</div>
+					</th>
+					<th>
+						<div class="d-flex">Last Ordered At</div>
+					</th>
+					<th></th>
+				</tr>
+			</thead>
+			<tbody>
+				@{
+					IEnumerable<OrderQuantity> sales = _sales;
+
+					foreach(var sale in sales)
+					{
+						<tr>
+							<td>
+							@{
+								var product = ProductService.GetById(sale.ProductId);
+								<span>@(product.Title)</span>
+							}
+							</td>
+							<td>@sale.Quantity</td>
+							<td>@sale.LastOrderedAt</td>
+						</tr>
+					}
+				}
+			</tbody>
+		</table>
+	}
+	else
+	{
+		<table class="table">
+			<thead>
+				<tr>
+					<th>
+						<div class="d-flex">Product Name</div>
+					</th>
+					<th>
+						<div class="d-flex">Quantity</div>
+					</th>
+					<th>
+						<div class="d-flex">Ordered By</div>
+					</th>
+					<th>
+						<div class="d-flex">Activity By</div>
+					</th>
+					<th>
+						<div class="d-flex">Activity Date</div>
+					</th>
+					<th></th>
+				</tr>
+			</thead>
+			<tbody>
+			@{
+				IEnumerable<Order> orders = _orders;
+
+				if (_tabFilter == "Approved")
+				{
+					orders = orders.Where(x => x.OrderStatus == Status.Approved);
+				}
+
+				else if (_tabFilter == "Rejected")
+				{
+					orders = orders.Where(x => x.OrderStatus == Status.Rejected);
+				}
+
+				foreach (var order in orders)
+				{
+					<tr>
+						<td>
+						@{
+							var product = ProductService.GetById(order.ProductId);
+							<span>@(product.Title)</span>
+						}
+						</td>
+						<td>@order.Quantity</td>
+						<td>
+						@{
+							var orderBy = UserService.GetById(order.OrderedBy);
+							<span>@(orderBy.Username)</span>
+						}
+						</td>
+						<td>
+						@{
+							var activityBy = UserService.GetById(order.ActivityBy);
+							<span>@(activityBy.Username)</span>
+						}
+						</td>
+						<td>@order.ActivityAt</td>
+						<td>
+						@{
+							if (order.OrderStatus == Status.Approved)
+							{
+										<button disabled="@true" class="btn btn-outline-success" type="button">
+											<i class="fa-solid fa-check-double"></i> &nbsp; Approved
+										</button>					
+							}
+							else if (order.OrderStatus == Status.Rejected)
+							{
+										<button disabled="@true" class="btn btn-outline-danger" type="button">
+											<i class="fa-solid fa-rectangle-xmark"></i> &nbsp; Rejected
+										</button>					
+							}
+						}
+						</td>
+					</tr>
+				}
+			}
+			</tbody>
+		</table>
+	}
+}
+
+
+@code {
+	private List<Order> _orders { get; set; }
+
+	private List<OrderQuantity> _sales { get; set; }
+
+	private string _tabFilter = "All";
+
+	private string _sortBy = "product";
+
+	private string _sortDirection = "ascending";
+
+	private string _ordersPath = UtilityService.GetAppOrdersFilePath();
+
+	protected override void OnInitialized()
+	{
+		_orders = OrderService.GetAll(_ordersPath).Where(x => x.OrderStatus != Status.Pending).ToList();
+		_sales = OrderService.GetOrderedQuantity();
+	}
+
+	public void TabFilter(string status)
+	{
+		_tabFilter = status;
+	}
+}

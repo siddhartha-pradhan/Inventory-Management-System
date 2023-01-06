@@ -1,0 +1,414 @@
+﻿@page "/products"
+
+<div class="row mt-3 mb-3">
+	<div class="col-6">
+		<h3>Product Index</h3>
+	</div>
+	<div class="col-6 text-end">
+		@if (_globalState.CurrentUser?.Role == Role.Admin)
+		{
+			<button class="btn btn-outline-dark" type="button" @onclick="OpenAddProductDialog">
+				<i class="fa-solid fa-plus"></i> &nbsp; Add a new product
+			</button>
+		}
+	</div>
+</div>
+
+<ul class="nav nav-tabs">
+	<li class="nav-item ">
+		<a class='nav-link btn @(_tabFilter == "All" ? "active" : "")' @onclick='()=>TabFilter("All")'>All</a>
+	</li>
+	<li class="nav-item">
+		<a class='nav-link btn @(_tabFilter == "In Stock" ? "active" : "")' @onclick='()=>TabFilter("In Stock")'>In Stock</a>
+	</li>
+	<li class="nav-item">
+		<a class='nav-link btn @(_tabFilter == "Out of Stock" ? "active" : "")' @onclick='()=>TabFilter("Out of Stock")'>Out of Stock</a>
+	</li>
+</ul>		
+
+<table class="table">
+	<thead>
+		<tr>
+			<th>
+				<div class="d-flex">
+					<input type="search" class="form-control search" placeholder="Search a product" @oninput="SearchProductName" />
+					<a class='btn text-@(_sortBy == "product" ? "primary" : "secondary")' data-mdb-toggle="tooltip" 
+						@onclick='()=>SortByHandler("product")'>
+						<span class='oi oi-sort-@(_sortBy == "product" ? _sortDirection : "ascending")' />
+					</a>
+				</div>
+			</th>
+			<th>
+				<div class="d-flex">
+					Quantity
+					<a class='btn text-@(_sortBy == "quantity" ? "primary" : "secondary")' data-mdb-toggle="tooltip"
+						@onclick='()=>SortByHandler("quantity")'>
+						<span class='oi oi-sort-@(_sortBy == "quantity" ? _sortDirection : "ascending")' />
+					</a>
+				</div>
+			</th>
+			<th>
+				<div class="d-flex">
+					Created By
+					<a class='btn text-@(_sortBy == "createdBy" ? "primary" : "secondary")' data-mdb-toggle="tooltip"
+						@onclick='()=>SortByHandler("createdBy")'>
+						<span class='oi oi-sort-@(_sortBy == "createdBy" ? _sortDirection : "ascending")' />
+					</a>
+				</div>
+			</th>
+			<th>
+				<div class="d-flex">
+					Created At
+					<a class='btn text-@(_sortBy == "createdAt" ? "primary" : "secondary")' data-mdb-toggle="tooltip"
+						@onclick='()=>SortByHandler("createdAt")'>
+						<span class='oi oi-sort-@(_sortBy == "createdAt" ? _sortDirection : "ascending")' />
+					</a>
+				</div>
+			</th>
+			<th></th>
+		</tr>
+	</thead>
+	<tbody>
+	@{
+		IEnumerable<Product> products = _products;
+
+		if (_sortBy == "product")
+		{
+			products = _sortDirection == "ascending" ? products.OrderBy(p => p.Title) : products.OrderByDescending(p => p.Title);
+		}
+		else if (_sortBy == "quantity")
+		{
+			products = _sortDirection == "ascending" ? ProductService.MergeSort(products.ToList()) : products.OrderByDescending(p => p.Title);
+		}
+		else if (_sortBy == "createdBy")
+		{
+			products = _sortDirection == "ascending" ? products.OrderBy(p => p.CreatedBy) : products.OrderByDescending(p => p.CreatedBy);
+		}
+		else if (_sortBy == "createdAt")
+		{
+			products = _sortDirection == "ascending" ? products.OrderBy(p => p.CreatedAt) : products.OrderByDescending(p => p.CreatedAt);
+		}
+
+		if (_tabFilter == "In Stock")
+		{
+			products = products.Where(x => x.Quantity > 0);
+		}
+
+		else if (_tabFilter == "Out of Stock")
+		{
+			products = products.Where(x => x.Quantity == 0);
+		}
+
+		foreach (var product in products)
+		{
+			<tr>
+				<td>@product.Title</td>
+				<td>@product.Quantity</td>
+				<td>
+					@{
+						var creator = ProductService.GetById(product.Id);
+						var user = UserService.GetById(creator.CreatedBy);
+						<span>@(creator == null ? "Administration" : user.Username)</span>
+					}
+				</td>
+				<td>
+					<p class="small mb-0"> @product.CreatedAt.ToString("MMM dd, yyyy h:mm tt")</p>
+				</td>
+				<td>
+					@if (_globalState.CurrentUser != null)
+					{
+						if (_globalState.CurrentUser.Role == Role.Staff)
+						{
+							<button class="btn btn-outline-secondary" type="button" @onclick="()=>OpenOrderProductDialog(product)">
+								<i class="fa-regular fa-pen-to-square"></i> &nbsp; Order
+							</button>
+						}
+						else if (_globalState.CurrentUser.Role == Role.Admin)
+						{
+							<button class="btn btn-outline-secondary" type="button" @onclick="()=>OpenEditProductDialog(product)">
+								<i class="fa-solid fa-pen"></i> &nbsp; Edit
+							</button>
+							<button class="btn btn-outline-danger" type="button" @onclick="()=>OpenDeleteProductDialog(product)">
+								<i class="fa-solid fa-trash"></i> &nbsp; Delete
+							</button>
+						}
+					}
+				</td>
+			</tr>
+		}
+	}
+	</tbody>
+</table>
+
+@if (_showUpsertProductDialog)
+{
+	<ModalDialog Title="@_dialogTitle" OnClose="@OnUpsertProductDialogClose" OkLabel="@_dialogOkLabel">
+		<form>
+			<div class="mb-3">
+				<label for="text" class="form-label">&nbsp;Product Title</label>
+				<input type="text" class="form-control" @bind="_productModel.Title" placeholder="Enter a product title">
+			</div>
+			<div class="mb-3">
+				<label for="number" class="form-label">&nbsp;Quantity</label>
+				<input type="number" class="form-control" @bind="_productModel.Quantity" placeholder="Enter the quantity of the product">
+			</div>
+		</form>
+
+	@if (!string.IsNullOrEmpty(_upsertProductErrorMessage))
+	{
+		<ErrorMessage Type="danger" Message="@_upsertProductErrorMessage" />
+	}
+	</ModalDialog>
+}
+
+@if (_showDeleteProductDialog)
+{
+	<ModalDialog Title="@_dialogTitle" OnClose="@OnDeleteProductDialogClose" OkLabel="@_dialogOkLabel">
+		
+		<p>Are you sure you want to delete <strong>@_productModel.Title</strong>?</p>
+		
+		@if (!string.IsNullOrEmpty(_deleteProductErrorMessage))
+		{
+			<ErrorMessage Type="danger" Message="@_deleteProductErrorMessage" />
+		}
+	</ModalDialog>
+}
+
+@if (_showOrderProductDialog)
+{
+	<ModalDialog Title="@_dialogTitle" OnClose="@OnOrderProductDialogClose" OkLabel="@_dialogOkLabel">
+		<form>
+			<div class="mb-3">
+				<label for="text" class="form-label">&nbsp;Product Title</label>
+				<input type="text" class="form-control" @bind="_productModel.Title" readonly>
+			</div>
+			<div class="mb-3">
+				<label for="number" class="form-label">&nbsp;Quantity</label>
+				<input type="number" class="form-control" @bind="_orderModel.Quantity" placeholder="Enter the quantity of the product">
+			</div>
+		</form>
+		@if (!string.IsNullOrEmpty(_orderProductErrorMessage))
+		{
+			<ErrorMessage Type="danger" Message="@_orderProductErrorMessage" />
+		}
+	</ModalDialog>
+}
+
+@code {
+	[CascadingParameter]
+	private GlobalState _globalState { get; set; }
+
+	private List<Product> _products { get; set; }
+
+	private List<Order> _orders { get; set; }
+
+	private bool _showUpsertProductDialog { get; set; }
+
+	private bool _showDeleteProductDialog { get; set; }
+
+	private bool _showOrderProductDialog { get; set; }
+
+	private Product _productModel { get; set; }
+
+	private Order _orderModel { get; set; }
+
+	private string _dialogTitle { get; set; }
+
+	private string _dialogOkLabel { get; set; }
+
+	private string _upsertProductErrorMessage { get; set; }
+
+	private string _orderProductErrorMessage { get; set; }
+
+	private string _deleteProductErrorMessage { get; set; }
+
+	private string _tabFilter = "All";
+
+	private string _sortBy = "product";
+
+	private string _sortDirection = "ascending";
+
+	private string _productsPath = UtilityService.GetAppProductsFilePath();
+
+	protected override void OnInitialized()
+	{
+		_products = ProductService.GetAll(_productsPath);
+	}
+
+	private void OpenAddProductDialog()
+	{
+		_dialogTitle = "Add a new product";
+
+		_dialogOkLabel = "Add";
+
+		_upsertProductErrorMessage = "";
+
+		_productModel = new Product();
+
+		_productModel.Id = Guid.Empty;
+
+		_showUpsertProductDialog = true;
+	}
+
+	private void OpenEditProductDialog(Product product)
+	{
+		_dialogTitle = "Edit an existing product";
+
+		_dialogOkLabel = "Save";
+
+		_upsertProductErrorMessage = "";
+
+		_productModel = product;
+
+		_showUpsertProductDialog = true;
+	}
+
+	private void OpenDeleteProductDialog(Product product)
+	{
+		_dialogTitle = "Delete a product";
+
+		_dialogOkLabel = "Confirm";
+
+		_productModel = product;
+
+		_showDeleteProductDialog = true;
+	}
+
+	private void OpenOrderProductDialog(Product product)
+	{
+		_dialogTitle = "Order a product";
+
+		_dialogOkLabel = "Order";
+
+		_orderProductErrorMessage = "";
+
+		_productModel = product;
+
+		_orderModel = new Order();
+
+		_orderModel.Quantity = 0;
+
+		_showOrderProductDialog = true;
+	}
+
+	private void SortByHandler(string sortByName)
+	{
+		if (_sortBy == sortByName)
+		{
+			_sortDirection = _sortDirection == "ascending" ? "descending" : "ascending";
+		}
+		else
+		{
+			_sortBy = sortByName;
+
+			_sortDirection = "ascending";
+		}
+	}
+
+	public void TabFilter(string status)
+	{
+		_tabFilter = status;
+	}
+
+	private void SearchProductName(ChangeEventArgs e)
+	{
+		var searchItem = e.Value.ToString();
+
+		if (!string.IsNullOrEmpty(searchItem) && searchItem.Length > 2)
+		{
+			_products = ProductService.GetAll(_productsPath).Where(p => p.Title.ToLower().Contains(searchItem.ToLower())).ToList();
+		}
+		else
+		{
+			_products = ProductService.GetAll(_productsPath);
+		}
+	}
+
+	private void OnUpsertProductDialogClose(bool isClosed)
+	{
+		if (isClosed)
+		{
+			_showUpsertProductDialog = false;
+		}
+		else
+		{
+			try
+			{
+				_upsertProductErrorMessage = "";
+
+				if (_productModel.Id == Guid.Empty)
+				{
+					_products = ProductService.Create(_globalState.CurrentUser.Id, _productModel.Title, _productModel.Quantity);
+				}
+
+				else
+				{
+					_products = ProductService.Update(_productModel.Id, _productModel.Title, _productModel.Quantity);
+				}
+
+				_showUpsertProductDialog = false;
+			}
+			catch (Exception e)
+			{
+				_upsertProductErrorMessage = e.Message;
+
+				Console.WriteLine(e.Message);
+			}
+		}
+	}
+
+	private void OnDeleteProductDialogClose(bool isClosed)
+	{
+		if (isClosed)
+		{
+
+			_showDeleteProductDialog = false;
+
+			_productModel = null;
+		}
+		else
+		{
+			try
+			{
+				_deleteProductErrorMessage = "";
+
+				_products = ProductService.Delete(_productModel.Id);
+
+				_showDeleteProductDialog = false;
+
+				_productModel = null;
+			}
+			catch (Exception e)
+			{
+				_deleteProductErrorMessage = e.Message;
+
+				Console.WriteLine(e.Message);
+			}
+		}
+	}
+
+	private void OnOrderProductDialogClose(bool isClosed)
+	{
+		if (isClosed)
+		{
+			_showOrderProductDialog = false;
+		}
+		else
+		{
+			try
+			{
+				_orderProductErrorMessage = "";
+
+				_orders = OrderService.Create(_globalState.CurrentUser.Id, _productModel.Id, _orderModel.Quantity);
+
+				_showOrderProductDialog = false;
+			}
+			catch (Exception e)
+			{
+				_orderProductErrorMessage = e.Message;
+
+				Console.WriteLine(e.Message);
+			}
+		}
+	}
+}
