@@ -119,20 +119,20 @@
 							<span>@(activityBy.Username)</span>
 						}
 						</td>
-						<td>@order.ActivityAt</td>
+							<td>@order.ActivityAt.ToString("dd MMM yyyy")</td>
 						<td>
 						@{
 							if (order.OrderStatus == Status.Approved)
 							{
-										<button disabled="@true" class="btn btn-outline-success" type="button">
-											<i class="fa-solid fa-check-double"></i> &nbsp; Approved
-										</button>					
+								<button disabled="@true" class="btn btn-outline-success" type="button">
+									<i class="fa-solid fa-check-double"></i> &nbsp; Approved
+								</button>					
 							}
 							else if (order.OrderStatus == Status.Rejected)
 							{
-										<button disabled="@true" class="btn btn-outline-danger" type="button">
-											<i class="fa-solid fa-rectangle-xmark"></i> &nbsp; Rejected
-										</button>					
+								<button disabled="@true" class="btn btn-outline-danger" type="button">
+									<i class="fa-solid fa-rectangle-xmark"></i> &nbsp; Rejected
+								</button>					
 							}
 						}
 						</td>

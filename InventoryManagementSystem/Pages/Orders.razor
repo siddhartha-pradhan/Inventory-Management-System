@@ -134,7 +134,7 @@
                     <span>@(user == null ? "Staff not found." : user.Username)</span>
                 }
                 </td>
-                <td>@order.OrderedAt</td>
+                    <td>@order.OrderedAt.ToString("MMM dd, yyyy h:mm tt")</td>
                 <td>
                 @{
                     if(order.OrderStatus == Status.Pending)

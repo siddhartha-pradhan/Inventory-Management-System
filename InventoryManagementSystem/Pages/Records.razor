@@ -1,0 +1,98 @@
+﻿@page "/records"
+
+<div class="row mt-3 mb-3">
+	<div class="col-6">
+		<h3>Monthly Records</h3>
+	</div>
+</div>
+
+<div class="search-filter">
+    <select class="form-select form-select-sm w-25 mb-4" @onchange="(e)=> FilterByMonth((string)e.Value)">
+        <option selected>Select Month</option>
+        <option value="Jan">Jan</option>
+        <option value="Feb">Feb</option>
+        <option value="Mar">Mar</option>
+        <option value="Apr">Apr</option>
+        <option value="May">May</option>
+        <option value="Jun">Jun</option>
+        <option value="Jul">Jul</option>
+        <option value="Aug">Aug</option>
+        <option value="Sep">Sep</option>
+        <option value="Oct">Oct</option>
+        <option value="Nov">Nov</option>
+        <option value="Dec">Dec</option>
+    </select>
+</div>
+
+<table class="table">
+	<thead>
+		<tr>
+			<th>
+				<div class="d-flex">Product Name</div>
+			</th>
+			<th>
+				<div class="d-flex">Quantity</div>
+			</th>
+			<th>
+				<div class="d-flex">Ordered By</div>
+			</th>
+			<th>
+				<div class="d-flex">Approved By</div>
+			</th>
+			<th>
+				<div class="d-flex">Approved Date</div>
+			</th>
+			<th></th>
+		</tr>
+	</thead>
+	<tbody>
+	@{
+		IEnumerable<Order> orders = _orders;
+
+		foreach (var order in orders)
+		{
+			<tr>
+				<td>
+				@{
+					var product = ProductService.GetById(order.ProductId);
+					<span>@(product.Title)</span>
+				}
+				</td>
+				<td>@order.Quantity</td>
+				<td>
+				@{
+					var orderBy = UserService.GetById(order.OrderedBy);
+					<span>@(orderBy.Username)</span>
+				}
+				</td>
+				<td>
+				@{
+					var activityBy = UserService.GetById(order.ActivityBy);
+					<span>@(activityBy.Username)</span>
+				}
+				</td>
+					<td>@order.ActivityAt.ToString("dd MMM yyyy")</td>
+				<td>
+				</td>
+			</tr>
+		}
+	}
+	</tbody>
+</table>
+
+@code{
+	private List<Order> _orders { get; set; }
+
+	private string _ordersPath = UtilityService.GetAppOrdersFilePath();
+
+	protected override void OnInitialized()
+	{
+		_orders = OrderService.GetAll(_ordersPath).Where(x => x.OrderStatus == Status.Approved).ToList();
+	}
+
+	private void FilterByMonth(string month)
+	{
+		OnInitialized();
+		_orders = _orders.Where(x => x.ActivityAt.ToString("MMM") == month).ToList();
+    }
+}
