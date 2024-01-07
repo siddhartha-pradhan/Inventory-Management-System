@@ -2,7 +2,7 @@
 
 namespace InventoryManagementSystem.Services; 
 
-public class UtilityService 
+public abstract class UtilityService 
 {
 	private const char _segmentDelimiter = ':';
 
@@ -45,7 +45,7 @@ public class UtilityService
 	}
 
 	/// <summary>
-	/// Initializing a method so as to retirve the directory path to store all the records and logs
+	/// Initializing a method so as to retrieve the directory path to store all the records and logs
 	/// </summary>
 	/// <returns>Path of the directory that holds all the application data</returns>
 	public static string GetAppDirectoryPath()

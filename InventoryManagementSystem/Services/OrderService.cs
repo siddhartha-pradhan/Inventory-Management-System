@@ -2,14 +2,14 @@
 
 namespace InventoryManagementSystem.Services;
 
-public class OrderService : GenericService<Order>
+public abstract class OrderService : GenericService<Order>
 {
 	/// <summary>
 	/// Defining a static path for all the required files for the service and domain logic
 	/// </summary>
-	public static string appDataDirectoryPath = UtilityService.GetAppDirectoryPath();
-	public static string appOrdersFilePath = UtilityService.GetAppOrdersFilePath();
-	public static string appProductsFilePath = UtilityService.GetAppProductsFilePath();
+	private static string AppDataDirectoryPath = UtilityService.GetAppDirectoryPath();
+	private static string AppOrdersFilePath = UtilityService.GetAppOrdersFilePath();
+	private static string AppProductsFilePath = UtilityService.GetAppProductsFilePath();
 
 	/// <summary>
 	/// Defines a method when an order is placed by a staff
@@ -21,18 +21,23 @@ public class OrderService : GenericService<Order>
 	/// <exception cref="Exception">Thrown when there's an error while placing an order</exception>
 	public static List<Order> Create(Guid userId, Guid productId, int quantity)
 	{
-		var orders = GetAll(appOrdersFilePath);
+		var orders = GetAll(AppOrdersFilePath);
 
-		var products = ProductService.GetAll(appProductsFilePath);
+		var products = ProductService.GetAll(AppProductsFilePath);
 
 		var product = products.FirstOrDefault(x => x.Id == productId);
 
+		if (product == null)
+		{
+			throw new Exception("A product with the following identifier could not be found.");
+		}
+		
 		if (quantity > product.Quantity)
 		{
 			throw new Exception("Can not order more items than the product's actual quantity.");
 		}
 
-		if (quantity < 0 || quantity == 0)
+		if (quantity is < 0 or 0)
 		{
 			throw new Exception("Add a positive integer value for the product to be ordered.");
 		}
@@ -46,7 +51,7 @@ public class OrderService : GenericService<Order>
 
 		orders.Add(order);
 
-		SaveAll(orders, appDataDirectoryPath, appOrdersFilePath);
+		SaveAll(orders, AppDataDirectoryPath, AppOrdersFilePath);
 
 		return orders;
 	}
@@ -61,11 +66,11 @@ public class OrderService : GenericService<Order>
 	/// <exception cref="Exception">When an order mishandles any operation</exception>
 	public static List<Order> Update(Guid orderId, Guid userId, Status status)
 	{
-		var orders = GetAll(appOrdersFilePath);
+		var orders = GetAll(AppOrdersFilePath);
 
 		var order = orders.FirstOrDefault(x => x.Id == orderId);
 
-		var products = ProductService.GetAll(appProductsFilePath);
+		var products = ProductService.GetAll(AppProductsFilePath);
 
 		var product = products.FirstOrDefault(x => x.Id == order.ProductId);
 
@@ -74,44 +79,53 @@ public class OrderService : GenericService<Order>
 			throw new Exception("Order not found.");
 		}
 
-		if (status == Status.Approved)
+		switch (status)
 		{
-			var day = (int)DateTime.Now.DayOfWeek + 1;
-
-			if (day < 2 || day > 6)
+			case Status.Approved:
 			{
-				throw new Exception("Can approve only between Monday and Friday.");
+				var day = (int)DateTime.Now.DayOfWeek + 1;
+
+				if (day is < 2 or > 6)
+				{
+					throw new Exception("Can approve only between Monday and Friday.");
+				}
+
+				var time = DateTime.Now.Hour;
+
+				if (time is < 9 or > 16)
+				{
+					throw new Exception("Can approve only between 9AM and 6PM.");
+				}
+
+				if(order.Quantity > product.Quantity)
+				{
+					throw new Exception("Can't approve products more than the existing product count.");
+				}
+
+				order.IsApproved = true;
+				order.OrderStatus = status;
+				product.Quantity -= order.Quantity;
+				break;
 			}
 
-			var time = (int)DateTime.Now.Hour;
-
-			if (time < 9 || time > 16)
+			case Status.Rejected:
 			{
-				throw new Exception("Can approve only between 9AM and 6PM.");
+				order.IsApproved = false;
+				order.OrderStatus = status;
+				break;
 			}
-
-			if(order.Quantity > product.Quantity)
-			{
-                throw new Exception("Can't approve products more than the existing product count.");
-            }
-
-            order.IsApproved = true;
-			order.OrderStatus = status;
-			product.Quantity -= order.Quantity;
+			case Status.Pending:
+				break;
+			default:
+				throw new ArgumentOutOfRangeException(nameof(status), status, null);
 		}
-
-		else if (status == Status.Rejected)
-		{
-			order.IsApproved = false;
-            order.OrderStatus = status;
-        }
 
         order.ActivityBy = userId;
 		order.ActivityAt = DateTime.Now;
 
-		SaveAll(orders, appDataDirectoryPath, appOrdersFilePath);
+		SaveAll(orders, AppDataDirectoryPath, AppOrdersFilePath);
 
-		ProductService.SaveAll(products, appDataDirectoryPath, appProductsFilePath);
+		ProductService.SaveAll(products, AppDataDirectoryPath, AppProductsFilePath);
 
 		return orders;
 	}
@@ -122,7 +136,7 @@ public class OrderService : GenericService<Order>
 	/// <returns>A list of approved orders and their sales</returns>
 	public static List<OrderQuantity> GetOrderedQuantity()
 	{
-		var orders = GetAll(appOrdersFilePath).Where(x => x.IsApproved);
+		var orders = GetAll(AppOrdersFilePath).Where(x => x.IsApproved);
 
 		var result = (from order in orders
 					  group order by order.ProductId

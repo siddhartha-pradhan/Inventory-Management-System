@@ -17,19 +17,3 @@
 		</article>
 	</main>
 </div>
-
-@code {
-	private GlobalState _globalState = new();
-
-	protected override void OnInitialized()
-	{
-		UserService.SeedUser();
-	}
-
-	private void LogoutHandler()
-	{
-		_globalState.CurrentUser = null;
-
-		NavManager.NavigateTo("/login");
-	}
-}

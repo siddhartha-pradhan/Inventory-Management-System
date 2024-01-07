@@ -29,7 +29,7 @@ public class GenericService <T> where T : class
 	/// <param name="entity">List of items</param>
 	/// <param name="directoryPath">Path of the directory storage</param>
 	/// <param name="filePath">Path of the file to be stored</param>
-	public static void SaveAll(List<T> entity, string directoryPath, string filePath)
+	protected static void SaveAll(List<T> entity, string directoryPath, string filePath)
 	{
 		if (!Directory.Exists(directoryPath))
 		{

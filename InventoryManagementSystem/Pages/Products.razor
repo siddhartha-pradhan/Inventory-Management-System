@@ -72,31 +72,23 @@
 	@{
 		IEnumerable<Product> products = _products;
 
-		if (_sortBy == "product")
+		products = _sortBy switch
 		{
-			products = _sortDirection == "ascending" ? products.OrderBy(p => p.Title) : products.OrderByDescending(p => p.Title);
-		}
-		else if (_sortBy == "quantity")
-		{
-			products = _sortDirection == "ascending" ? ProductService.MergeSort(products.ToList()) : products.OrderByDescending(p => p.Title);
-		}
-		else if (_sortBy == "createdBy")
-		{
-			products = _sortDirection == "ascending" ? products.OrderBy(p => p.CreatedBy) : products.OrderByDescending(p => p.CreatedBy);
-		}
-		else if (_sortBy == "createdAt")
-		{
-			products = _sortDirection == "ascending" ? products.OrderBy(p => p.CreatedAt) : products.OrderByDescending(p => p.CreatedAt);
-		}
+			"product" => _sortDirection == "ascending" ? products.OrderBy(p => p.Title) : products.OrderByDescending(p => p.Title),
+			"quantity" => _sortDirection == "ascending" ? ProductService.MergeSort(products.ToList()) : products.OrderByDescending(p => p.Title),
+			"createdBy" => _sortDirection == "ascending" ? products.OrderBy(p => p.CreatedBy) : products.OrderByDescending(p => p.CreatedBy),
+			"createdAt" => _sortDirection == "ascending" ? products.OrderBy(p => p.CreatedAt) : products.OrderByDescending(p => p.CreatedAt),
+			_ => products
+		};
 
-		if (_tabFilter == "In Stock")
+		switch (_tabFilter)
 		{
-			products = products.Where(x => x.Quantity > 0);
-		}
-
-		else if (_tabFilter == "Out of Stock")
-		{
-			products = products.Where(x => x.Quantity == 0);
+			case "In Stock":
+				products = products.Where(x => x.Quantity > 0);
+				break;
+			case "Out of Stock":
+				products = products.Where(x => x.Quantity == 0);
+				break;
 		}
 
 		foreach (var product in products)
@@ -117,20 +109,23 @@
 				<td>
 					@if (_globalState.CurrentUser != null)
 					{
-						if (_globalState.CurrentUser.Role == Role.Staff)
+						switch (_globalState.CurrentUser.Role)
 						{
-							<button class="btn btn-outline-secondary" type="button" @onclick="()=>OpenOrderProductDialog(product)">
-								<i class="fa-regular fa-pen-to-square"></i> &nbsp; Order
-							</button>
-						}
-						else if (_globalState.CurrentUser.Role == Role.Admin)
-						{
-							<button class="btn btn-outline-secondary" type="button" @onclick="()=>OpenEditProductDialog(product)">
-								<i class="fa-solid fa-pen"></i> &nbsp; Edit
-							</button>
-							<button class="btn btn-outline-danger" type="button" @onclick="()=>OpenDeleteProductDialog(product)">
-								<i class="fa-solid fa-trash"></i> &nbsp; Delete
-							</button>
+							case Role.Staff:
+								<button class="btn btn-outline-secondary" type="button" @onclick="()=>OpenOrderProductDialog(product)">
+									<i class="fa-regular fa-pen-to-square"></i> &nbsp; Order
+								</button>
+								break;
+							case Role.Admin:
+								<button class="btn btn-outline-secondary" type="button" @onclick="()=>OpenEditProductDialog(product)">
+									<i class="fa-solid fa-pen"></i> &nbsp; Edit
+								</button>
+								<button class="btn btn-outline-danger" type="button" @onclick="()=>OpenDeleteProductDialog(product)">
+									<i class="fa-solid fa-trash"></i> &nbsp; Delete
+								</button>
+								break;
+							default:
+								throw new ArgumentOutOfRangeException();
 						}
 					}
 				</td>
@@ -192,223 +187,4 @@
 			<ErrorMessage Type="danger" Message="@_orderProductErrorMessage" />
 		}
 	</ModalDialog>
-}
-
-@code {
-	[CascadingParameter]
-	private GlobalState _globalState { get; set; }
-
-	private List<Product> _products { get; set; }
-
-	private List<Order> _orders { get; set; }
-
-	private bool _showUpsertProductDialog { get; set; }
-
-	private bool _showDeleteProductDialog { get; set; }
-
-	private bool _showOrderProductDialog { get; set; }
-
-	private Product _productModel { get; set; }
-
-	private Order _orderModel { get; set; }
-
-	private string _dialogTitle { get; set; }
-
-	private string _dialogOkLabel { get; set; }
-
-	private string _upsertProductErrorMessage { get; set; }
-
-	private string _orderProductErrorMessage { get; set; }
-
-	private string _deleteProductErrorMessage { get; set; }
-
-	private string _tabFilter = "All";
-
-	private string _sortBy = "product";
-
-	private string _sortDirection = "ascending";
-
-	private string _productsPath = UtilityService.GetAppProductsFilePath();
-
-	protected override void OnInitialized()
-	{
-		_products = ProductService.GetAll(_productsPath);
-	}
-
-	private void OpenAddProductDialog()
-	{
-		_dialogTitle = "Add a new product";
-
-		_dialogOkLabel = "Add";
-
-		_upsertProductErrorMessage = "";
-
-		_productModel = new Product();
-
-		_productModel.Id = Guid.Empty;
-
-		_showUpsertProductDialog = true;
-	}
-
-	private void OpenEditProductDialog(Product product)
-	{
-		_dialogTitle = "Edit an existing product";
-
-		_dialogOkLabel = "Save";
-
-		_upsertProductErrorMessage = "";
-
-		_productModel = product;
-
-		_showUpsertProductDialog = true;
-	}
-
-	private void OpenDeleteProductDialog(Product product)
-	{
-		_dialogTitle = "Delete a product";
-
-		_dialogOkLabel = "Confirm";
-
-		_productModel = product;
-
-		_showDeleteProductDialog = true;
-	}
-
-	private void OpenOrderProductDialog(Product product)
-	{
-		_dialogTitle = "Order a product";
-
-		_dialogOkLabel = "Order";
-
-		_orderProductErrorMessage = "";
-
-		_productModel = product;
-
-		_orderModel = new Order();
-
-		_orderModel.Quantity = 0;
-
-		_showOrderProductDialog = true;
-	}
-
-	private void SortByHandler(string sortByName)
-	{
-		if (_sortBy == sortByName)
-		{
-			_sortDirection = _sortDirection == "ascending" ? "descending" : "ascending";
-		}
-		else
-		{
-			_sortBy = sortByName;
-
-			_sortDirection = "ascending";
-		}
-	}
-
-	public void TabFilter(string status)
-	{
-		_tabFilter = status;
-	}
-
-	private void SearchProductName(ChangeEventArgs e)
-	{
-		var searchItem = e.Value.ToString();
-
-		if (!string.IsNullOrEmpty(searchItem) && searchItem.Length > 2)
-		{
-			_products = ProductService.GetAll(_productsPath).Where(p => p.Title.ToLower().Contains(searchItem.ToLower())).ToList();
-		}
-		else
-		{
-			_products = ProductService.GetAll(_productsPath);
-		}
-	}
-
-	private void OnUpsertProductDialogClose(bool isClosed)
-	{
-		if (isClosed)
-		{
-			_showUpsertProductDialog = false;
-		}
-		else
-		{
-			try
-			{
-				_upsertProductErrorMessage = "";
-
-				if (_productModel.Id == Guid.Empty)
-				{
-					_products = ProductService.Create(_globalState.CurrentUser.Id, _productModel.Title, _productModel.Quantity);
-				}
-
-				else
-				{
-					_products = ProductService.Update(_productModel.Id, _productModel.Title, _productModel.Quantity);
-				}
-
-				_showUpsertProductDialog = false;
-			}
-			catch (Exception e)
-			{
-				_upsertProductErrorMessage = e.Message;
-
-				Console.WriteLine(e.Message);
-			}
-		}
-	}
-
-	private void OnDeleteProductDialogClose(bool isClosed)
-	{
-		if (isClosed)
-		{
-
-			_showDeleteProductDialog = false;
-
-			_productModel = null;
-		}
-		else
-		{
-			try
-			{
-				_deleteProductErrorMessage = "";
-
-				_products = ProductService.Delete(_productModel.Id);
-
-				_showDeleteProductDialog = false;
-
-				_productModel = null;
-			}
-			catch (Exception e)
-			{
-				_deleteProductErrorMessage = e.Message;
-
-				Console.WriteLine(e.Message);
-			}
-		}
-	}
-
-	private void OnOrderProductDialogClose(bool isClosed)
-	{
-		if (isClosed)
-		{
-			_showOrderProductDialog = false;
-		}
-		else
-		{
-			try
-			{
-				_orderProductErrorMessage = "";
-
-				_orders = OrderService.Create(_globalState.CurrentUser.Id, _productModel.Id, _orderModel.Quantity);
-
-				_showOrderProductDialog = false;
-			}
-			catch (Exception e)
-			{
-				_orderProductErrorMessage = e.Message;
-
-				Console.WriteLine(e.Message);
-			}
-		}
-	}
 }

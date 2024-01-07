@@ -2,20 +2,20 @@
 
 namespace InventoryManagementSystem.Services;
 
-public class UserService : GenericService<User>
+public abstract class UserService : GenericService<User>
 {
 	/// <summary>
 	/// Defining the static user credentials to list out when program is executed for the first time
 	/// </summary>
 	public const string SeedUsername = "admin";
-	public const string SeedEmail = "admin@admin.com";
 	public const string SeedPassword = "admin";
+	private const string SeedEmail = "admin@admin.com";
 
 	/// <summary>
 	/// Defining a static path for all the required files for the service and domain logic
 	/// </summary>
-	public static string appDataDirectoryPath = UtilityService.GetAppDirectoryPath();
-	public static string appUsersFilePath = UtilityService.GetAppUsersFilePath();
+	private static string appDataDirectoryPath = UtilityService.GetAppDirectoryPath();
+	private static string appUsersFilePath = UtilityService.GetAppUsersFilePath();
 
 	/// <summary>
 	/// Defining a static method to automatically create first admin user during the program execution in the first state
@@ -32,7 +32,7 @@ public class UserService : GenericService<User>
 	}
 
 	/// <summary>
-	/// Defining a method to allow login access to a user as per the entered creds
+	/// Defining a method to allow login access to a user as per the entered credentials
 	/// </summary>
 	/// <param name="username">Username in the form of user credentials</param>
 	/// <param name="password">Password in the form of user credentials</param>
@@ -51,7 +51,7 @@ public class UserService : GenericService<User>
 			throw new Exception(loginErrorMessage);
 		}
 
-		bool passwordIsValid = UtilityService.VerifyHash(password, user.PasswordHash);
+		var passwordIsValid = UtilityService.VerifyHash(password, user.PasswordHash);
 
 		if (!passwordIsValid)
 		{
@@ -64,11 +64,11 @@ public class UserService : GenericService<User>
 	/// <summary>
 	/// Defining a method to return a user as per its identifier
 	/// </summary>
-	/// <param name="Id">User's ID</param>
+	/// <param name="id">User's ID</param>
 	/// <returns>The user instance for a valid ID</returns>
-	public static User GetById(Guid Id)
+	public static User GetById(Guid id)
 	{
-		var user = GetAll(appUsersFilePath).FirstOrDefault(x => x.Id == Id);
+		var user = GetAll(appUsersFilePath).FirstOrDefault(x => x.Id == id);
 
 		return user;
 	}
@@ -89,7 +89,7 @@ public class UserService : GenericService<User>
 		
 		if(username == "" || email == "" || password == "")
 		{
-			throw new Exception("Please insert coorect and valid input for each of the fields.");
+			throw new Exception("Please insert correct and valid input for each of the fields.");
 		}
 
 		var users = GetAll(appUsersFilePath);
@@ -101,7 +101,7 @@ public class UserService : GenericService<User>
 			throw new Exception("Username already exists. Please choose any other username.");
 		}
 
-		var numberOfAdmins = users.Where(x => x.Role == Role.Admin).Count();
+		var numberOfAdmins = users.Count(x => x.Role == Role.Admin);
 
 		if (numberOfAdmins >= 2 && role == Role.Admin)
 		{

@@ -81,41 +81,21 @@
             orders = orders.Where(x => x.OrderedBy == _globalState.CurrentUser.Id);
         }
 
-        if (_sortBy == "product")
+        orders = _tabFilter switch
         {
-            orders = _sortDirection == "ascending" ? orders.OrderBy(p => p.ProductId) : orders.OrderByDescending(p => p.ProductId);
-        }
-        else if (_sortBy == "quantity")
-        {
-            orders = _sortDirection == "ascending" ? orders.OrderBy(p => p.Quantity) : orders.OrderByDescending(p => p.Quantity);
-        }
-        else if (_sortBy == "orderStatus")
-        {
-            orders = _sortDirection == "ascending" ? orders.OrderBy(p => p.OrderStatus) : orders.OrderByDescending(p => p.OrderStatus);
-        }
-        else if (_sortBy == "orderedBy")
-        {
-            orders = _sortDirection == "ascending" ? orders.OrderBy(p => p.OrderedBy) : orders.OrderByDescending(p => p.OrderedBy);
-        }
-        else if (_sortBy == "orderedAt")
-        {
-            orders = _sortDirection == "ascending" ? orders.OrderBy(p => p.OrderedAt) : orders.OrderByDescending(p => p.OrderedAt);
-        }
-
-        if (_tabFilter == "Pending")
-        {
-            orders = orders.Where(x => x.OrderStatus == Status.Pending);
-        }
-
-        else if (_tabFilter == "Approved")
-        {
-            orders = orders.Where(x => x.OrderStatus == Status.Approved);
-        }
-
-        else if (_tabFilter == "Rejected")
-        {
-            orders = orders.Where(x => x.OrderStatus == Status.Rejected);
-        }
+            "Pending" => orders.Where(x => x.OrderStatus == Status.Pending),
+            "Approved" => orders.Where(x => x.OrderStatus == Status.Approved),
+            "Rejected" => orders.Where(x => x.OrderStatus == Status.Rejected),
+            _ => _sortBy switch
+            {
+                "product" => _sortDirection == "ascending" ? orders.OrderBy(p => p.ProductId) : orders.OrderByDescending(p => p.ProductId),
+                "quantity" => _sortDirection == "ascending" ? orders.OrderBy(p => p.Quantity) : orders.OrderByDescending(p => p.Quantity),
+                "orderStatus" => _sortDirection == "ascending" ? orders.OrderBy(p => p.OrderStatus) : orders.OrderByDescending(p => p.OrderStatus),
+                "orderedBy" => _sortDirection == "ascending" ? orders.OrderBy(p => p.OrderedBy) : orders.OrderByDescending(p => p.OrderedBy),
+                "orderedAt" => _sortDirection == "ascending" ? orders.OrderBy(p => p.OrderedAt) : orders.OrderByDescending(p => p.OrderedAt),
+                _ => orders
+            }
+        };
 
         foreach (var order in orders)
         {
@@ -202,130 +182,4 @@
             <ErrorMessage Type="danger" Message="@_rejectOrderErrorMessage" />
         }
     </ModalDialog>
-}
-
-@code {
-    [CascadingParameter]
-    private GlobalState _globalState { get; set; }
-
-    private List<Order> _orders { get; set; }
-
-    private Order _orderModel { get; set; }
-
-    private bool _showApproveOrderDialog { get; set; }
-
-    private bool _showRejectOrderDialog { get; set; }
-
-    private string _dialogTitle { get; set; }
-
-    private string _dialogOkLabel { get; set; }
-
-    private string _approveOrderErrorMessage { get; set; }
-
-    private string _rejectOrderErrorMessage { get; set; }
-
-    private string _tabFilter = "All";
-
-    private string _sortBy = "product";
-
-    private string _sortDirection = "ascending";
-
-    private string _ordersPath = UtilityService.GetAppOrdersFilePath();
-
-    protected override void OnInitialized()
-    {
-        _orders = OrderService.GetAll(_ordersPath);
-    }
-
-    private void OpenApproveOrderDialog(Order order)
-    {
-        _dialogTitle = "Approve an order";
-
-        _dialogOkLabel = "Confirm";
-
-        _approveOrderErrorMessage = "";
-
-        _orderModel = order;
-
-        _showApproveOrderDialog = true;
-    }
-
-    private void OpenRejectOrderDialog(Order order)
-    {
-        _dialogTitle = "Reject a requested order";
-
-        _dialogOkLabel = "Confirm";
-
-        _rejectOrderErrorMessage = "";
-
-        _orderModel = order;
-
-        _showRejectOrderDialog = true;
-    }
-
-    private void SortByHandler(string sortByIndex)
-    {
-        if (_sortBy == sortByIndex)
-        {
-            _sortDirection = _sortDirection == "ascending" ? "descending" : "ascending";
-        }
-        else
-        {
-            _sortBy = sortByIndex;
-
-            _sortDirection = "ascending";
-        }
-    }
-
-    public void TabFilter(string status)
-    {
-        _tabFilter = status;
-    }
-
-    private void OnApproveOrderDialogClose(bool isClosed)
-    {
-        if (isClosed)
-        {
-            _showApproveOrderDialog = false;
-        }
-        else
-        {
-            try
-            {
-                _orders = OrderService.Update(_orderModel.Id, _globalState.CurrentUser.Id, Status.Approved);
-
-                _showApproveOrderDialog = false;
-            }
-            catch (Exception e)
-            {
-                _approveOrderErrorMessage = e.Message;
-
-                Console.WriteLine(e.Message);
-            }
-        }
-
-    }
-
-    private void OnRejectOrderDialogClose(bool isClosed)
-    {
-        if (isClosed)
-        {
-            _showRejectOrderDialog = false;
-        }
-        else
-        {
-            try
-            {
-                _orders = OrderService.Update(_orderModel.Id, _globalState.CurrentUser.Id, Status.Rejected);
-
-                _showRejectOrderDialog = false;
-            }
-            catch (Exception e)
-            {
-                _rejectOrderErrorMessage = e.Message;
-
-                Console.WriteLine(e.Message);
-            }
-        }
-    }
 }

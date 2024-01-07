@@ -2,13 +2,13 @@
 
 namespace InventoryManagementSystem.Services; 
 
-public class ProductService : GenericService<Product>
+public abstract class ProductService : GenericService<Product>
 {
 	/// <summary>
 	/// Defining a static path for all the required files for the service and domain logic
 	/// </summary>
-	public static string appDataDirectoryPath = UtilityService.GetAppDirectoryPath();
-	public static string appProductsFilePath = UtilityService.GetAppProductsFilePath();
+	private static string appDataDirectoryPath = UtilityService.GetAppDirectoryPath();
+	private static string appProductsFilePath = UtilityService.GetAppProductsFilePath();
 
 	/// <summary>
 	/// Defining a method to retrieve a product when an ID is passed to it
@@ -40,7 +40,7 @@ public class ProductService : GenericService<Product>
 	{
 		if(title == "")
 		{
-			throw new Exception("Please insert coorect and valid input for each of the fields.");
+			throw new Exception("Please insert correct and valid input for each of the fields.");
 		}
 
 		if (quantity <= 0)
@@ -52,7 +52,7 @@ public class ProductService : GenericService<Product>
 
 		var products = GetAll(appProductsFilePath);
 
-		var productExists = products.Any(x => x.Title.ToLower() == title);
+		var productExists = products.Any(x => x.Title.Equals(title, StringComparison.CurrentCultureIgnoreCase));
 
 		if (productExists)
 		{
@@ -80,7 +80,7 @@ public class ProductService : GenericService<Product>
 	/// <param name="title">The title of the product to be updated</param>
 	/// <param name="quantity">The quantity with which it is updated</param>
 	/// <returns>A list of updating products</returns>
-	/// <exception cref="Exception">Errors thrown when it runs to some dysfunctioning</exception>
+	/// <exception cref="Exception">Errors thrown when it runs to some exceptions</exception>
 	public static List<Product> Update(Guid productId, string title, int quantity)
 	{
 		if (quantity < 0)
@@ -142,21 +142,21 @@ public class ProductService : GenericService<Product>
 
 		var left = new List<Product>();
 		var right = new List<Product>();
+		var middle = unsorted.Count / 2;
 
-		int middle = unsorted.Count / 2;
-
-		for (int i = 0; i < middle; i++)  
+		for (var i = 0; i < middle; i++)  
 		{
 			left.Add(unsorted[i]);
 		}
 		
-		for (int i = middle; i < unsorted.Count; i++)
+		for (var i = middle; i < unsorted.Count; i++)
 		{
 			right.Add(unsorted[i]);
 		}
 
 		left = MergeSort(left);
 		right = MergeSort(right);
+		
 		return Merge(left, right);
 	}
 
@@ -166,35 +166,44 @@ public class ProductService : GenericService<Product>
 	/// <param name="left">The left hand side of the unsorted list</param>
 	/// <param name="right">The right hand side of the unsorted list</param>
 	/// <returns>Sorted list as per the side of the list</returns>
-	public static List<Product> Merge(List<Product> left, List<Product> right)
+	private static List<Product> Merge(List<Product> left, List<Product> right)
 	{
 		var result = new List<Product>();
 
 		while (left.Count > 0 || right.Count > 0)
 		{
-			if (left.Count > 0 && right.Count > 0)
+			switch (left.Count)
 			{
-				if (left.First().Quantity <= right.First().Quantity)
+				case > 0 when right.Count > 0:
 				{
+					if (left.First().Quantity <= right.First().Quantity)
+					{
+						result.Add(left.First());
+						left.Remove(left.First());
+					}
+					else
+					{
+						result.Add(right.First());
+						right.Remove(right.First());
+					}
+
+					break;
+				}
+				case > 0:
 					result.Add(left.First());
 					left.Remove(left.First());
-				}
-				else
+					break;
+				default:
 				{
-					result.Add(right.First());
-					right.Remove(right.First());
-				}
-			}
-			else if (left.Count > 0)
-			{
-				result.Add(left.First());
-				left.Remove(left.First());
-			}
-			else if (right.Count > 0)
-			{
-				result.Add(right.First());
+					if (right.Count > 0)
+					{
+						result.Add(right.First());
 
-				right.Remove(right.First());
+						right.Remove(right.First());
+					}
+
+					break;
+				}
 			}
 		}
 		return result;
